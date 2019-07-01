@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>GitHub OAuth Login Test</title>
+    <script type="module">
+      import { request } from "https://cdn.pika.dev/@octokit/request";
+      const CLIENT_ID = "af3540296c43be2ada1c";
+      const LOGIN_URL =
+        "https://henrikjoreteg-github-secret-keeper.glitch.me/:client_id/:code";
+      const searchParams = new URLSearchParams(location.search);
+
+      const params = {};
+      for (const [key, value] of searchParams.entries()) {
+        params[key] = value;
+      }
+
+      if (params.code) {
+        request(LOGIN_URL, {
+          client_id: CLIENT_ID,
+          code: params.code
+        })
+          .then(response => {
+            console.log("access token is", response.data.access_token);
+            login(response.data.access_token);
+            window.request = request.defaults({
+              headers: {
+                authorization: `token ${response.data.access_token}`
+              }
+            });
+
+            // remove ?code=... from URL
+            const path =
+              location.pathname +
+              location.search.replace(/\bcode=\w+/, "").replace(/\?$/, "");
+
+            history.pushState({}, "", path);
+          })
+          .catch(console.error);
+      } else {
+        const token = localStorage.getItem("token");
+
+        if (token) {
+          // we asume the token is valid as it’s 99% of times the case
+          login(token);
+          window.request = request.defaults({
+            headers: {
+              authorization: `token ${token}`
+            }
+          });
+
+          // ... but we check just to be sure
+          request("HEAD /user", {
+            headers: {
+              authorization: `token ${token}`
+            }
+          }).catch(() => {
+            logout();
+          });
+        } else {
+          logout();
+        }
+      }
+    </script>
+    <script>
+      function login(token) {
+        document.body.dataset.state = "main";
+        localStorage.setItem("token", token);
+      }
+
+      function logout() {
+        document.body.dataset.state = "login";
+        localStorage.clear();
+      }
+
+      async function sayMyName() {
+        const { data } = await request("GET /user");
+        alert(data.name);
+      }
+    </script>
+    <style>
+      #login,
+      #main {
+        display: none;
+      }
+      [data-state] #loading {
+        display: none;
+      }
+      [data-state="login"] #login,
+      [data-state="main"] #main {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading">
+      Loading ...
+    </div>
+    <div id="login">
+      <a
+        href="https://github.com/login/oauth/authorize?client_id=af3540296c43be2ada1c"
+      >
+        Login with GitHub
+      </a>
+    </div>
+    <div id="main">
+      <h1>Hello there!</h1>
+      <p>
+        <button onclick="sayMyName()">Say my name!</button>
+      </p>
+      <p>
+        <button onclick="logout()">Logout</button>
+      </p>
+    </div>
+  </body>
+</html>
