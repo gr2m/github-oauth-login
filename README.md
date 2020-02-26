@@ -49,7 +49,7 @@ After the project is imported, edit the `package.json` file and add
 Then create a new file called `.env` and enter the following
 
 ```
-<client id>:<client secret>
+<client id>=<client secret>
 ```
 
 Replace `<client id>` with your OAuth app’s clientid, and the same with `<client secret>`. At the end it will look something like this
